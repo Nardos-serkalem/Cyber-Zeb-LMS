@@ -7,7 +7,10 @@ import { StatusPill } from '../../../shared/components/StatusPill'
 import { ZoomIcon } from '../../../shared/components/ZoomIcon'
 import { useToast } from '../../../shared/components/toast/ToastProvider'
 import { GlassCard } from '../../../shared/layout/GlassCard'
+import { endZoomMeeting } from '../../../shared/api/zoomApi'
 import { openMeetingUrl } from '../../../shared/utils/liveSessionUtils'
+import { useLiveSessions } from '../../institution/hooks/useAssessments'
+import { useSyncZoomMeetingStatus } from '../../institution/hooks/useSyncZoomMeetingStatus'
 import { InstructorPageError, InstructorPageLoading } from '../components/InstructorPageStates'
 import { ScheduleLiveSessionModal } from '../components/ScheduleLiveSessionModal'
 import { useInstructorDashboard } from '../hooks/useInstructorDashboard'
@@ -51,10 +54,14 @@ function LiveSessionCard({
   session,
   featured,
   onJoin,
+  onEnd,
+  ending,
 }: {
   session: LiveClassSession
   featured?: boolean
   onJoin: (session: LiveClassSession) => void
+  onEnd: (session: LiveClassSession) => void
+  ending?: boolean
 }) {
   const isLive = session.status === 'live'
 
@@ -91,10 +98,15 @@ function LiveSessionCard({
               <PlatformBadge platform={session.platform} onDark />
             </div>
           </div>
-          <Button variant="primary" className="shrink-0 shadow-lg shadow-lemon-500/25" onClick={() => onJoin(session)}>
-            <MonitorPlay size={16} />
-            Start session
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+            <Button variant="primary" className="shadow-lg shadow-lemon-500/25" onClick={() => onJoin(session)}>
+              <MonitorPlay size={16} />
+              Start session
+            </Button>
+            <Button variant="secondary" onClick={() => onEnd(session)} disabled={ending}>
+              {ending ? 'Ending…' : 'End session'}
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -140,15 +152,21 @@ function LiveSessionCard({
         </div>
 
         {session.status !== 'ended' ? (
-          <Button
-            variant={session.status === 'live' ? 'primary' : 'secondary'}
-            size="sm"
-            className="shrink-0 self-start sm:self-center"
-            onClick={() => onJoin(session)}
-          >
-            <Video size={13} />
-            {session.status === 'live' ? 'Start' : session.meetingUrl ? 'Open link' : 'Start'}
-          </Button>
+          <div className="flex flex-col gap-2 shrink-0 self-start sm:self-center">
+            <Button
+              variant={session.status === 'live' ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => onJoin(session)}
+            >
+              <Video size={13} />
+              {session.status === 'live' ? 'Start' : session.meetingUrl ? 'Open link' : 'Start'}
+            </Button>
+            {session.status === 'live' ? (
+              <Button variant="secondary" size="sm" onClick={() => onEnd(session)} disabled={ending}>
+                {ending ? 'Ending…' : 'End session'}
+              </Button>
+            ) : null}
+          </div>
         ) : (
           <span className="text-[11px] font-semibold text-secondary-text shrink-0">Recording saved</span>
         )}
@@ -163,12 +181,16 @@ function SessionSection({
   sessions,
   featuredFirst,
   onJoin,
+  onEnd,
+  endingId,
 }: {
   title: string
   subtitle: string
   sessions: LiveClassSession[]
   featuredFirst?: boolean
   onJoin: (session: LiveClassSession) => void
+  onEnd: (session: LiveClassSession) => void
+  endingId?: string | null
 }) {
   if (sessions.length === 0) return null
 
@@ -180,10 +202,24 @@ function SessionSection({
         <h2 className="text-[13px] font-bold uppercase tracking-wider text-navy-900">{title}</h2>
         <p className="text-[12px] text-secondary-text mt-0.5">{subtitle}</p>
       </div>
-      {featuredFirst && first ? <LiveSessionCard session={first} featured onJoin={onJoin} /> : null}
+      {featuredFirst && first ? (
+        <LiveSessionCard
+          session={first}
+          featured
+          onJoin={onJoin}
+          onEnd={onEnd}
+          ending={endingId === first.id}
+        />
+      ) : null}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {(featuredFirst ? rest : sessions).map((session) => (
-          <LiveSessionCard key={session.id} session={session} onJoin={onJoin} />
+          <LiveSessionCard
+            key={session.id}
+            session={session}
+            onJoin={onJoin}
+            onEnd={onEnd}
+            ending={endingId === session.id}
+          />
         ))}
       </div>
     </section>
@@ -193,11 +229,35 @@ function SessionSection({
 export function InstructorLiveClassesPage() {
   const { notify } = useToast()
   const { data, isLoading, isError, reload } = useInstructorDashboard()
+  const { records, updateSession } = useLiveSessions()
   const [modalOpen, setModalOpen] = useState(false)
+  const [endingId, setEndingId] = useState<string | null>(null)
+  useSyncZoomMeetingStatus()
 
   const handleJoin = (session: LiveClassSession) => {
-    if (!openMeetingUrl(session.meetingUrl)) {
-      notify('No meeting link is set for this session yet.', 'error')
+    if (!openMeetingUrl(session.startUrl || session.meetingUrl)) {
+      notify('No Zoom meeting has been created for this session yet.', 'error')
+    }
+  }
+
+  const handleEnd = async (session: LiveClassSession) => {
+    const record = records.find((item) => item.id === session.id)
+    setEndingId(session.id)
+    updateSession(session.id, { status: 'ended' })
+    try {
+      if (record?.zoomMeetingId) {
+        await endZoomMeeting(record.zoomMeetingId)
+      }
+      notify('Session ended. It is no longer on air.')
+    } catch (error) {
+      notify(
+        error instanceof Error
+          ? `${error.message} The session is marked ended in Berana.`
+          : 'Session marked ended in Berana.',
+        'info',
+      )
+    } finally {
+      setEndingId(null)
     }
   }
 
@@ -251,6 +311,8 @@ export function InstructorLiveClassesPage() {
         sessions={liveNow}
         featuredFirst
         onJoin={handleJoin}
+        onEnd={(session) => void handleEnd(session)}
+        endingId={endingId}
       />
 
       <SessionSection
@@ -258,6 +320,8 @@ export function InstructorLiveClassesPage() {
         subtitle="Prepare materials before class starts."
         sessions={upcoming}
         onJoin={handleJoin}
+        onEnd={(session) => void handleEnd(session)}
+        endingId={endingId}
       />
 
       <SessionSection
@@ -265,6 +329,8 @@ export function InstructorLiveClassesPage() {
         subtitle="Review attendance and recordings from past sessions."
         sessions={ended}
         onJoin={handleJoin}
+        onEnd={(session) => void handleEnd(session)}
+        endingId={endingId}
       />
 
       {data.liveClasses.length === 0 ? (

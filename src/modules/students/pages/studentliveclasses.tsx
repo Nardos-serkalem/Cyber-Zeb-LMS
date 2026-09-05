@@ -7,6 +7,7 @@ import { ZoomIcon } from '../../../shared/components/ZoomIcon'
 import { useToast } from '../../../shared/components/toast/ToastProvider'
 import { GlassCard } from '../../../shared/layout/GlassCard'
 import { openMeetingUrl } from '../../../shared/utils/liveSessionUtils'
+import { useSyncZoomMeetingStatus } from '../../institution/hooks/useSyncZoomMeetingStatus'
 import { StudentPageError, StudentPageLoading } from '../components/StudentPageStates'
 import { useStudentDashboard } from '../hooks/useStudentDashboard'
 import type { LiveClassSession } from '../types'
@@ -188,6 +189,7 @@ function SessionSection({
 export function StudentLiveClassesPage() {
   const { notify } = useToast()
   const { data, isLoading, isError } = useStudentDashboard()
+  useSyncZoomMeetingStatus()
 
   const handleJoin = (session: LiveClassSession) => {
     if (!openMeetingUrl(session.meetingUrl)) {

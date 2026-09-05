@@ -31,6 +31,11 @@ export function GeneratedReportsList({ reports, onDownload }: GeneratedReportsLi
       </div>
 
       <div className="flex flex-col">
+        {reports.length === 0 ? (
+          <p className="text-[13px] text-secondary-text py-6 text-center">
+            No reports yet. Create one to download a PDF of your institution data.
+          </p>
+        ) : null}
         {reports.map((report) => {
           const status = statusMap[report.status]
           const FormatIcon = formatIcon[report.format]

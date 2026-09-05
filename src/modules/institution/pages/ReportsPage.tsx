@@ -29,6 +29,7 @@ import { ReportCategoryCard } from '../components/ReportCategoryCard'
 import { GeneratedReportsList } from '../components/GeneratedReportsList'
 import { MiniBarChart } from '../components/MiniBarChart'
 import { TrendLineChart } from '../components/TrendLineChart'
+import { downloadInstitutionReport } from '../utils/exportInstitutionReport'
 import type { GeneratedReport, ReportCategory } from '../types'
 
 const STAT = 17
@@ -63,43 +64,53 @@ export function ReportsPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [activeTab, setActiveTab] = useState('Overview')
+  const [generating, setGenerating] = useState(false)
 
   const openModal = () => {
     setForm(emptyForm)
     setModalOpen(true)
   }
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!form.name.trim()) {
       notify('Please give the report a name.', 'error')
       return
     }
-    const id = createId('report')
+
     const newReport: GeneratedReport = {
-      id,
+      id: createId('report'),
       name: form.name.trim(),
       category: form.category,
-      generatedOn: 'Generating…',
+      generatedOn: todayLabel(),
       format: form.format,
-      status: 'processing',
+      status: 'ready',
     }
-    setReports((prev) => [newReport, ...prev])
-    setModalOpen(false)
-    notify('Report generation started…', 'info')
 
-    window.setTimeout(() => {
-      setReports((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status: 'ready', generatedOn: todayLabel() } : r)),
-      )
-      notify(`"${newReport.name}" is ready to download.`)
-    }, 1800)
+    setGenerating(true)
+    try {
+      await downloadInstitutionReport(newReport, analytics)
+      setReports((prev) => [newReport, ...prev])
+      setModalOpen(false)
+      setForm(emptyForm)
+      notify(`"${newReport.name}" downloaded as ${newReport.format}.`)
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not generate the report.', 'error')
+    } finally {
+      setGenerating(false)
+    }
   }
 
-  const handleDownload = (report: GeneratedReport) => {
-    notify(`Downloading "${report.name}" (${report.format})…`)
+  const handleDownload = async (report: GeneratedReport) => {
+    try {
+      await downloadInstitutionReport(report, analytics)
+      notify(`Downloaded "${report.name}".`)
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not download the report.', 'error')
+    }
   }
 
-  const readyCount = reports.filter((r) => r.status === 'ready').length
+  const reportList = Array.isArray(reports) ? reports : []
+  const readyCount = reportList.filter((r) => r.status === 'ready').length
   const { summary } = analytics
 
   return (
@@ -283,7 +294,7 @@ export function ReportsPage() {
         </div>
       </div>
 
-      <GeneratedReportsList reports={reports} onDownload={handleDownload} />
+      <GeneratedReportsList reports={reportList} onDownload={(report) => void handleDownload(report)} />
 
       <Modal
         open={modalOpen}
@@ -293,8 +304,12 @@ export function ReportsPage() {
         description="Generate a report from your institution data."
         footer={
           <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleGenerate}>Generate Report</Button>
+            <Button variant="secondary" onClick={() => setModalOpen(false)} disabled={generating}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={() => void handleGenerate()} disabled={generating}>
+              {generating ? 'Creating file…' : 'Generate & download'}
+            </Button>
           </>
         }
       >

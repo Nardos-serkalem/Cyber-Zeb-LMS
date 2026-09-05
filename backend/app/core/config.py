@@ -42,9 +42,11 @@ class Settings(BaseSettings):
     STORAGE_SECRET_KEY: str = ""
     STORAGE_REGION: str = ""
 
-    # --- Zoom (Blueprint Section 10) ---
+    # --- Zoom Server-to-Server OAuth (Blueprint Section 10) ---
+    ZOOM_ACCOUNT_ID: str = ""
     ZOOM_CLIENT_ID: str = ""
     ZOOM_CLIENT_SECRET: str = ""
+    ZOOM_USER_EMAIL: str = ""  # optional host; first active user is used if empty
     ZOOM_WEBHOOK_SECRET_TOKEN: str = ""
 
     # --- Payments (Blueprint Section 13) ---

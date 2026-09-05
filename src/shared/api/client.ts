@@ -13,7 +13,11 @@ export function activeTenantCode(): string {
   return getActiveTenant()?.slug || DEFAULT_TENANT_CODE
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
+// In Vite, always go through the /api proxy so a stale .env.local (e.g. :8000)
+// cannot send the browser to a dead port. Production still honors VITE_API_BASE_URL.
+const API_BASE = import.meta.env.DEV
+  ? '/api/v1'
+  : (import.meta.env.VITE_API_BASE_URL ?? '/api/v1')
 const TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 7 // 7 days (JWT may expire sooner)
 
 export const apiClient = axios.create({

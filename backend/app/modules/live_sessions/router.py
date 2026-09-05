@@ -1,20 +1,43 @@
-"""
-Virtual Classroom / Zoom Integration module - FastAPI router.
+"""Zoom live-session endpoints."""
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-Blueprint reference: Section 10 (Virtual Learning and Zoom Integration)
-Planned endpoints (Sprint 6):
-- POST /courses/{id}/live-sessions
-- POST /live-sessions/{id}/join
-- POST /integrations/zoom/webhook
-
-Follow the pattern in app/modules/tenants/router.py:
-- Depends(get_db) for the session
-- Depends(require_roles(...)) for authorization
-- delegate all logic to the module's service.py
-"""
-from fastapi import APIRouter
+from app.core.database import get_db
+from app.modules.live_sessions.schemas import (
+    ZoomMeetingCreate,
+    ZoomMeetingOut,
+    ZoomMeetingStatusOut,
+    ZoomStatusOut,
+)
+from app.modules.live_sessions.service import LiveSessionsService
 
 router = APIRouter()
 
-# TODO(Sprint 6): implement endpoints listed above using the
-# tenants/identity modules as the reference pattern.
+
+@router.get("/zoom/status", response_model=ZoomStatusOut)
+async def zoom_status():
+    return LiveSessionsService.status()
+
+
+@router.post("/zoom/meetings", response_model=ZoomMeetingOut)
+async def create_zoom_meeting(
+    payload: ZoomMeetingCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    return await LiveSessionsService(db).create_zoom_meeting(payload)
+
+
+@router.get("/zoom/meetings/{meeting_id}", response_model=ZoomMeetingStatusOut)
+async def zoom_meeting_status(
+    meeting_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    return await LiveSessionsService(db).zoom_meeting_status(meeting_id)
+
+
+@router.post("/zoom/meetings/{meeting_id}/end", response_model=ZoomMeetingStatusOut)
+async def end_zoom_meeting(
+    meeting_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    return await LiveSessionsService(db).end_zoom_meeting(meeting_id)

@@ -36,7 +36,7 @@ export function formatDurationMinutes(minutes: number): string {
 export function resolveLiveSessionStatus(
   session: LiveSessionRecord,
 ): 'live' | 'upcoming' | 'ended' {
-  if (session.status === 'cancelled') return 'ended'
+  if (session.status === 'cancelled' || session.status === 'ended') return 'ended'
 
   const now = Date.now()
   const start = new Date(session.startAt).getTime()
@@ -137,6 +137,7 @@ export function toInstructorLiveClasses(
       duration: formatDurationMinutes(s.durationMinutes),
       platform: s.platform,
       meetingUrl: s.meetingUrl,
+      startUrl: s.startUrl,
       status: resolveLiveSessionStatus(s),
       attendees: s.attendees,
     }))

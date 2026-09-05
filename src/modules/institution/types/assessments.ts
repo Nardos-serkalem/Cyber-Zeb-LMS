@@ -22,6 +22,9 @@ export interface LiveSessionRecord {
   durationMinutes: number
   platform: string
   meetingUrl?: string
+  startUrl?: string
+  zoomMeetingId?: string
+  zoomPassword?: string
   status: LiveSessionStatus
   attendees?: number
 }

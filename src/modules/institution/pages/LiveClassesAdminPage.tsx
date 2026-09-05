@@ -17,6 +17,7 @@ import { openMeetingUrl } from '../../../shared/utils/liveSessionUtils'
 import { useCampusContext } from '../context/CampusContext'
 import { useSyncCampusFilter } from '../hooks/useSyncCampusFilter'
 import { useLiveSessions } from '../hooks/useAssessments'
+import { useSyncZoomMeetingStatus } from '../hooks/useSyncZoomMeetingStatus'
 
 const tabs = ['All', 'Live', 'Upcoming', 'Ended']
 
@@ -31,6 +32,7 @@ export function LiveClassesAdminPage() {
   const { notify } = useToast()
   const { activeCampuses, selectedCampusId } = useCampusContext()
   const { records } = useLiveSessions()
+  useSyncZoomMeetingStatus()
   const [activeTab, setActiveTab] = useState('All')
   const [query, setQuery] = useState('')
   const [campusFilter, setCampusFilter] = useState('all')

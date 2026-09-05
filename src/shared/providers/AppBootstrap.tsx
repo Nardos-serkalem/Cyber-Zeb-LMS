@@ -32,8 +32,8 @@ function BackendErrorScreen({ message, onRetry }: { message: string; onRetry: ()
         <h1 className="text-lg font-extrabold text-white">Backend unavailable</h1>
         <p className="text-sm text-white/70 leading-relaxed">{message}</p>
         <p className="text-xs text-white/50 leading-relaxed">
-          The API is reached at <code className="text-white/70">/api/v1</code> on this same host.
-          If you still see 401, clear site cookies and retry. On the server, check{' '}
+          Locally open <code className="text-white/70">http://127.0.0.1:5173</code> with the API on
+          port 8001. If this is a deployed server, check{' '}
           <code className="text-white/70">docker compose logs api</code>.
         </p>
         <button

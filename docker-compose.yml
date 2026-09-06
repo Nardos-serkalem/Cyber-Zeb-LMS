@@ -12,6 +12,11 @@ services:
       DEBUG: "false"
       DATABASE_URL: sqlite+aiosqlite:////code/data/brana_lms.db
       DATABASE_URL_SYNC: sqlite:////code/data/brana_lms.db
+      FRONTEND_BASE_URL: ${PUBLIC_URL:-}
+      ZOOM_ACCOUNT_ID: ${ZOOM_ACCOUNT_ID:-}
+      ZOOM_CLIENT_ID: ${ZOOM_CLIENT_ID:-}
+      ZOOM_CLIENT_SECRET: ${ZOOM_CLIENT_SECRET:-}
+      ZOOM_USER_EMAIL: ${ZOOM_USER_EMAIL:-}
     volumes:
       - brana_sqlite_data:/code/data
     healthcheck:

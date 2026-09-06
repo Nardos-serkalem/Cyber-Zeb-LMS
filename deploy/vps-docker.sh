@@ -234,6 +234,13 @@ ensure_env() {
   upsert_env JWT_SECRET_KEY "$jwt"
   upsert_env PLATFORM_SUPER_ADMIN_EMAIL "superadmin@berana.edu"
   upsert_env PLATFORM_SUPER_ADMIN_PASSWORD "Demo123!"
+
+  # Keep existing Zoom keys. Only add empty placeholders if they are missing.
+  for zoom_key in ZOOM_ACCOUNT_ID ZOOM_CLIENT_ID ZOOM_CLIENT_SECRET ZOOM_USER_EMAIL; do
+    if ! grep -q "^${zoom_key}=" .env 2>/dev/null; then
+      upsert_env "$zoom_key" ""
+    fi
+  done
 }
 
 ensure_certs() {
@@ -338,6 +345,13 @@ ensure_env "$IP"
 ensure_certs "$IP"
 open_firewall
 
+if [ -z "$(env_get ZOOM_ACCOUNT_ID)" ] || [ -z "$(env_get ZOOM_CLIENT_ID)" ] || [ -z "$(env_get ZOOM_CLIENT_SECRET)" ]; then
+  echo ""
+  echo "Zoom credentials are empty in .env. Live meetings will fail until you add:"
+  echo "  ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET"
+  echo "in ${ROOT}/.env  then: docker compose up -d --force-recreate api"
+fi
+
 log "Building and starting containers (first run takes a few minutes)"
 dc up --build -d --force-recreate --remove-orphans
 
@@ -379,6 +393,9 @@ cat <<EOF
  HTTPS:    ${HTTPS_URL}
  API docs: ${HTTPS_URL}/docs
  Demo password: Demo123!
+
+ Zoom keys: ${ROOT}/.env  (ZOOM_ACCOUNT_ID / CLIENT_ID / CLIENT_SECRET)
+ Then:      docker compose up -d --force-recreate api
 
  Browser HTTPS warning is expected (self-signed cert).
  Click Advanced → Proceed.

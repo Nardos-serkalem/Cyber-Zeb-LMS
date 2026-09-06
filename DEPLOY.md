@@ -22,6 +22,26 @@ HTTP fallback: `http://YOUR_VPS_IP:7777`
 
 The browser will warn on the self-signed certificate. Click **Advanced → Proceed**.
 
+### Where credentials go
+
+| Secret | File | Used by |
+|--------|------|---------|
+| **Zoom** Account ID, Client ID, Client Secret | **Project root `.env`** on the VPS | Docker `api` container |
+| Optional Zoom host email | Same `.env` as `ZOOM_USER_EMAIL` | API (skip user-list scope) |
+| Super Admin / JWT | Same root `.env` | API (script fills JWT if empty) |
+| Local Zoom test on your PC | `backend/.env` | Local uvicorn only — **not** Docker |
+
+Docker reads **only** the root `.env` (`env_file: .env` in `docker-compose.yml`).  
+Do not put Zoom keys in the frontend or in `.env.local`.
+
+After you paste Zoom keys:
+
+```bash
+docker compose up -d --force-recreate api
+```
+
+Marketplace scopes: `meeting:write:meeting:admin` and `user:read:list_users:admin` (or set `ZOOM_USER_EMAIL`). Activate the app again after changing scopes.
+
 ### Options
 
 ```bash
@@ -81,11 +101,14 @@ deploy\build-and-pack.cmd
 Upload `deploy\berana-release.zip` with WinSCP, then on the VPS:
 
 ```bash
-unzip berana-release.zip -d Cyber-Zeb-LMS
+unzip -o berana-release.zip -d Cyber-Zeb-LMS
 cd Cyber-Zeb-LMS
+# Paste Zoom keys into .env if they are not already there
 chmod +x deploy/vps-docker.sh
 ./deploy/vps-docker.sh --ip YOUR_VPS_IP
 ```
+
+That rebuilds **web** (Zoom UI + PDF reports) and **api** (Zoom create/end meeting). Existing SQLite data in the Docker volume is kept.
 
 ---
 
